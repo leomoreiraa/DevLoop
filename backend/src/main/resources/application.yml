@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/devloop
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+server:
+  port: 8080
+
+jwt:
+  secret: your_jwt_secret
+  expiration: 3600
+
+cors:
+  allowed-origins: "*"
+  allowed-methods: "GET, POST, PUT, DELETE, OPTIONS"
+  allowed-headers: "Authorization, Content-Type"
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.devloop: DEBUG

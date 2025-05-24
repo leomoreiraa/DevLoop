@@ -1,0 +1,188 @@
+import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
+
+function DashboardPage() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-full font-sans text-text-primary animate-pulse">
+        Carregando informações do usuário...
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto py-8 px-4 animate-fadeIn">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div>
+          <h2 className="text-3xl font-bold mb-2 font-display">
+            Olá, <span className="text-primary">{user.username}</span>!
+          </h2>
+          <p className="text-text-secondary">Bem-vindo(a) ao seu dashboard personalizado</p>
+        </div>
+        
+        <div className="mt-4 md:mt-0">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary">
+            {user.role === 'MENTOR' ? 'Mentor' : 'Mentee'}
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="card bg-primary/10 border-none">
+          <h3 className="text-lg font-semibold mb-1">Sessões Agendadas</h3>
+          <p className="text-3xl font-bold">0</p>
+        </div>
+        
+        <div className="card bg-secondary/10 border-none">
+          <h3 className="text-lg font-semibold mb-1">Horas de Mentoria</h3>
+          <p className="text-3xl font-bold">0</p>
+        </div>
+        
+        <div className="card bg-accent/10 border-none">
+          <h3 className="text-lg font-semibold mb-1">Conexões</h3>
+          <p className="text-3xl font-bold">0</p>
+        </div>
+      </div>
+
+      {/* Mentee Dashboard */}
+      {user.role === 'MENTEE' && (
+        <div className="card border-l-4 border-primary mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold font-display">Área do Mentee</h3>
+            <Link to="/mentors" className="btn btn-primary">
+              Buscar Mentores
+            </Link>
+          </div>
+          
+          {/* Upcoming Sessions */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-4">Próximas Sessões</h4>
+            <div className="bg-background rounded-lg p-6 text-center">
+              <div className="text-5xl mb-4">📅</div>
+              <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
+              <Link to="/mentors" className="text-primary font-medium hover:underline">
+                Encontre um mentor e agende sua primeira sessão
+              </Link>
+            </div>
+          </div>
+          
+          {/* Recommended Mentors */}
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Mentores Recomendados</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="card bg-offwhite border border-[#ECECEC]">
+                <div className="flex items-center mb-3">
+                  <div className="h-12 w-12 bg-primary rounded-full mr-3"></div>
+                  <div>
+                    <h5 className="font-semibold">Mentor Exemplo</h5>
+                    <p className="text-text-muted text-sm">Desenvolvedor Fullstack</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">React</span>
+                  <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded-full">Node.js</span>
+                </div>
+                <Link to="/mentors" className="text-primary text-sm font-medium hover:underline">
+                  Ver perfil
+                </Link>
+              </div>
+              
+              <div className="card bg-offwhite border border-[#ECECEC]">
+                <div className="flex items-center mb-3">
+                  <div className="h-12 w-12 bg-secondary rounded-full mr-3"></div>
+                  <div>
+                    <h5 className="font-semibold">Mentor Exemplo</h5>
+                    <p className="text-text-muted text-sm">UX Designer</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Figma</span>
+                  <span className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full">UI/UX</span>
+                </div>
+                <Link to="/mentors" className="text-primary text-sm font-medium hover:underline">
+                  Ver perfil
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mentor Dashboard */}
+      {user.role === 'MENTOR' && (
+        <div className="card border-l-4 border-accent mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold font-display">Área do Mentor</h3>
+            <Link to="/availability" className="btn btn-accent">
+              Gerenciar Disponibilidade
+            </Link>
+          </div>
+          
+          {/* Upcoming Sessions */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold mb-4">Próximas Sessões</h4>
+            <div className="bg-background rounded-lg p-6 text-center">
+              <div className="text-5xl mb-4">📅</div>
+              <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
+              <Link to="/availability" className="text-primary font-medium hover:underline">
+                Configure sua disponibilidade para receber agendamentos
+              </Link>
+            </div>
+          </div>
+          
+          {/* Profile Completion */}
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Perfil de Mentor</h4>
+            <div className="bg-background rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h5 className="font-semibold">Completude do Perfil</h5>
+                <span className="text-primary font-medium">30%</span>
+              </div>
+              <div className="w-full bg-[#ECECEC] rounded-full h-2.5 mb-4">
+                <div className="bg-primary h-2.5 rounded-full" style={{ width: '30%' }}></div>
+              </div>
+              <ul className="space-y-2 text-text-secondary">
+                <li className="flex items-center">
+                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-primary/20 text-primary text-center">✓</span>
+                  Informações básicas
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  Adicionar habilidades e especialidades
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  Configurar disponibilidade
+                </li>
+                <li className="flex items-center">
+                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  Adicionar biografia e experiência
+                </li>
+              </ul>
+              <div className="mt-4">
+                <Link to="/profile" className="btn btn-secondary">
+                  Completar Perfil
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Activity */}
+      <div className="card">
+        <h3 className="text-xl font-bold mb-4 font-display">Atividade Recente</h3>
+        <div className="bg-background rounded-lg p-6 text-center">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-text-secondary">Nenhuma atividade recente para mostrar.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default DashboardPage;
