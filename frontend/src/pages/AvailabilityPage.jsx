@@ -92,25 +92,28 @@ function AvailabilityPage() {
     setError('');
 
     try {
-      // Corrigido: envie um objeto como availabilityData
-      await availabilityService.updateAvailability(
-        apiClient,
-        user.id,
-        { dayOfWeek: selectedDay, timeSlots }
-      );
+      // Verifica se já existe disponibilidade para este dia
+      const existingIndex = availabilities.findIndex(a => a.dayOfWeek === selectedDay);
+      const availabilityId = existingIndex >= 0 ? availabilities[existingIndex].id : null;
+      
+      if (availabilityId) {
+        // Atualiza disponibilidade existente
+        await availabilityService.updateAvailability(
+          apiClient,
+          availabilityId,
+          { dayOfWeek: selectedDay, timeSlots }
+        );
+      } else {
+        // Cria nova disponibilidade
+        await availabilityService.createAvailability(
+          apiClient,
+          { dayOfWeek: selectedDay, timeSlots, mentorId: user.id }
+        );
+      }
 
-      // Atualizar o estado local
-      setAvailabilities(prev => {
-        const existingIndex = prev.findIndex(a => a.dayOfWeek === selectedDay);
-
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = { dayOfWeek: selectedDay, timeSlots };
-          return updated;
-        } else {
-          return [...prev, { dayOfWeek: selectedDay, timeSlots }];
-        }
-      });
+      // Recarrega as disponibilidades para garantir dados atualizados
+      const updatedAvailabilities = await availabilityService.getAvailability(apiClient, user.id);
+      setAvailabilities(updatedAvailabilities || []);
 
       setSaveSuccess(true);
     } catch (err) {

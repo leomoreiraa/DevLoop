@@ -1,6 +1,7 @@
 package com.devloop.entity;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -19,6 +20,19 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+    
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+    
+    private String title;
+    
+    @Column(columnDefinition = "TEXT")
+    private String experience;
+    
+    @ElementCollection
+    @CollectionTable(name = "user_skills", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "skill")
+    private List<String> skills;
 
     public enum Role {
         MENTOR,
@@ -65,5 +79,37 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+    
+    public String getBio() {
+        return bio;
+    }
+    
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+    
+    public String getTitle() {
+        return title;
+    }
+    
+    public void setTitle(String title) {
+        this.title = title;
+    }
+    
+    public String getExperience() {
+        return experience;
+    }
+    
+    public void setExperience(String experience) {
+        this.experience = experience;
+    }
+    
+    public List<String> getSkills() {
+        return skills;
+    }
+    
+    public void setSkills(List<String> skills) {
+        this.skills = skills;
     }
 }

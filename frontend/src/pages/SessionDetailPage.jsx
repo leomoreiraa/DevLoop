@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import sessionService from '../services/sessionService';
 import { useAuth } from '../contexts/AuthContext';
 import userService from '../services/userService';
+import SessionVideoChat from '../components/VideoChat/SessionVideoChat';
 
 function SessionDetailPage() {
   const { id } = useParams();
@@ -287,6 +288,14 @@ function SessionDetailPage() {
         )}
       </div>
 
+      {/* Interface de vídeo e chat para sessões agendadas */}
+      {upcoming && session.status !== 'CANCELLED' && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">Sala de Aula Virtual</h3>
+          <SessionVideoChat session={session} user={user} />
+        </div>
+      )}
+      
       {!upcoming && session.status !== 'CANCELLED' && (
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">Avaliação</h3>

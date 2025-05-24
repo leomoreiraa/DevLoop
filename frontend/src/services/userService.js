@@ -22,6 +22,10 @@ const getUserById = async (apiClient, id) => {
   }
 };
 
+/**
+ * Método legado para atualização completa de usuário
+ * Não deve ser usado para atualização de perfil ou senha
+ */
 const updateUser = async (apiClient, id, userData) => {
   try {
     const response = await apiClient.put(`/api/users/${id}`, userData);
@@ -29,6 +33,37 @@ const updateUser = async (apiClient, id, userData) => {
   } catch (error) {
     console.error(`Update user ${id} API error:`, error.response?.data || error.message);
     throw new Error(error.response?.data || "Failed to update user");
+  }
+};
+
+/**
+ * Método seguro para atualização apenas de campos do perfil
+ * Não afeta campos sensíveis como senha ou email
+ */
+const updateUserProfile = async (apiClient, id, profileData) => {
+  try {
+    const response = await apiClient.put(`/api/users/${id}/profile`, profileData);
+    return response.data;
+  } catch (error) {
+    console.error(`Update profile ${id} API error:`, error.response?.data || error.message);
+    throw new Error(error.response?.data || "Falha ao atualizar perfil");
+  }
+};
+
+/**
+ * Método específico para atualização de senha
+ * Requer senha atual para validação
+ */
+const updateUserPassword = async (apiClient, id, passwordData) => {
+  try {
+    const response = await apiClient.put(`/api/users/${id}/password`, passwordData);
+    return response.data;
+  } catch (error) {
+    console.error(`Update password ${id} API error:`, error.response?.data || error.message);
+    if (error.response?.status === 400) {
+      throw new Error("Senha atual incorreta");
+    }
+    throw new Error(error.response?.data?.message || "Falha ao atualizar senha");
   }
 };
 
@@ -47,6 +82,8 @@ const userService = {
   getUsers,
   getUserById,
   updateUser,
+  updateUserProfile,
+  updateUserPassword,
   getProfile,
 };
 
