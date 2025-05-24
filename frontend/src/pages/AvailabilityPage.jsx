@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import availabilityService from '../services/availabilityService';
 
 function AvailabilityPage() {
+  const { user, apiClient } = useAuth();
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,9 +34,13 @@ function AvailabilityPage() {
 
   useEffect(() => {
     const fetchAvailability = async () => {
+      if (!apiClient || !user?.id) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        const data = await availabilityService.getAvailability();
+        const data = await availabilityService.getAvailability(apiClient, user.id);
         setAvailabilities(data || []);
       } catch (err) {
         console.error("Failed to fetch availability:", err);
@@ -45,7 +51,7 @@ function AvailabilityPage() {
     };
 
     fetchAvailability();
-  }, []);
+  }, [user, apiClient]);
 
   // Quando um dia da semana é selecionado, carregar os horários disponíveis
   useEffect(() => {
@@ -76,18 +82,27 @@ function AvailabilityPage() {
       setError('Por favor, selecione um dia da semana.');
       return;
     }
-    
+    if (!apiClient || !user?.id) {
+      setError('Usuário ou conexão não disponível.');
+      return;
+    }
+
     setSaveLoading(true);
     setSaveSuccess(false);
     setError('');
-    
+
     try {
-      await availabilityService.updateAvailability(selectedDay, timeSlots);
-      
+      // Corrigido: envie um objeto como availabilityData
+      await availabilityService.updateAvailability(
+        apiClient,
+        user.id,
+        { dayOfWeek: selectedDay, timeSlots }
+      );
+
       // Atualizar o estado local
       setAvailabilities(prev => {
         const existingIndex = prev.findIndex(a => a.dayOfWeek === selectedDay);
-        
+
         if (existingIndex >= 0) {
           const updated = [...prev];
           updated[existingIndex] = { dayOfWeek: selectedDay, timeSlots };
@@ -96,7 +111,7 @@ function AvailabilityPage() {
           return [...prev, { dayOfWeek: selectedDay, timeSlots }];
         }
       });
-      
+
       setSaveSuccess(true);
     } catch (err) {
       console.error("Failed to update availability:", err);
@@ -129,7 +144,7 @@ function AvailabilityPage() {
         <div className="md:col-span-2">
           <div className="card mb-6">
             <h3 className="text-lg font-semibold mb-4">Configurar Disponibilidade</h3>
-            
+
             <div className="mb-6">
               <label htmlFor="dayOfWeek" className="form-label">Dia da Semana</label>
               <select
@@ -146,7 +161,7 @@ function AvailabilityPage() {
                 ))}
               </select>
             </div>
-            
+
             {selectedDay && (
               <>
                 <div className="mb-6">
@@ -168,7 +183,7 @@ function AvailabilityPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="flex justify-end">
                   <button
                     onClick={handleSaveAvailability}
@@ -182,12 +197,12 @@ function AvailabilityPage() {
             )}
           </div>
         </div>
-        
+
         {/* Coluna da direita - Resumo da disponibilidade */}
         <div className="md:col-span-1">
           <div className="card sticky top-8">
             <h3 className="text-lg font-semibold mb-4">Resumo da Disponibilidade</h3>
-            
+
             {loading ? (
               <div className="text-center py-6">
                 <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
@@ -197,7 +212,7 @@ function AvailabilityPage() {
               <div className="space-y-4">
                 {weekdays.map(day => {
                   const dayAvailability = availabilities.find(a => a.dayOfWeek === day.value);
-                  
+
                   return (
                     <div key={day.value} className="border-b border-[#ECECEC] pb-3 last:border-b-0">
                       <h4 className="font-medium mb-1">{day.label}</h4>

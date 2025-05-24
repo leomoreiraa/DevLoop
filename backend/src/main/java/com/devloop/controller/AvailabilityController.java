@@ -37,4 +37,28 @@ public class AvailabilityController {
         }
         return availabilityRepository.findAll();
     }
+
+    @PutMapping("/{id}")
+    public Availability updateAvailability(@PathVariable Long id, @RequestBody Availability updatedAvailability, Principal principal) {
+        Availability availability = availabilityRepository.findById(id).orElseThrow();
+        // (Opcional) Verifique se o usuário autenticado é o mentor dono da disponibilidade
+        String email = principal.getName();
+        if (!availability.getMentor().getEmail().equals(email)) {
+            throw new RuntimeException("Você não tem permissão para atualizar esta disponibilidade.");
+        }
+        availability.setStart(updatedAvailability.getStart());
+        availability.setEndTime(updatedAvailability.getEndTime());
+        availability.setDayOfWeek(updatedAvailability.getDayOfWeek());
+        return availabilityRepository.save(availability);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteAvailability(@PathVariable Long id, Principal principal) {
+        Availability availability = availabilityRepository.findById(id).orElseThrow();
+        String email = principal.getName();
+        if (!availability.getMentor().getEmail().equals(email)) {
+            throw new RuntimeException("Você não tem permissão para excluir esta disponibilidade.");
+        }
+        availabilityRepository.deleteById(id);
+    }
 }

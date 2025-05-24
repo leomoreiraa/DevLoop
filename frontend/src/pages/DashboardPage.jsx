@@ -1,9 +1,68 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import sessionService from '../services/sessionService';
 
 function DashboardPage() {
-  const { user } = useAuth();
+  const { user, apiClient } = useAuth();
+
+  const [stats, setStats] = useState({
+    sessions: 0,
+    hours: 0,
+    connections: 0,
+  });
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user || !apiClient) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        // Busca todas as sessões do usuário
+        const sessions = await sessionService.getSessions(apiClient);
+        // Filtra sessões futuras
+        const now = new Date();
+        const upcoming = sessions.filter(
+          s =>
+            new Date(s.start) > now &&
+            (user.role === 'MENTOR'
+              ? s.mentorId === user.id
+              : s.menteeId === user.id)
+        );
+        // Conta conexões únicas
+        const connections = new Set(
+          sessions.map(s =>
+            user.role === 'MENTOR' ? s.menteeId : s.mentorId
+          )
+        ).size;
+        // Soma horas de mentoria
+        const totalHours = sessions.reduce((acc, s) => {
+          const start = new Date(s.start);
+          const end = new Date(s.end);
+          const diff = (end - start) / (1000 * 60 * 60);
+          return acc + (diff > 0 ? diff : 0);
+        }, 0);
+
+        setStats({
+          sessions: sessions.length,
+          hours: totalHours,
+          connections,
+        });
+        setUpcomingSessions(upcoming.slice(0, 3));
+      } catch (err) {
+        setStats({ sessions: 0, hours: 0, connections: 0 });
+        setUpcomingSessions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [user, apiClient]);
 
   if (!user) {
     return (
@@ -22,7 +81,6 @@ function DashboardPage() {
           </h2>
           <p className="text-text-secondary">Bem-vindo(a) ao seu dashboard personalizado</p>
         </div>
-        
         <div className="mt-4 md:mt-0">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary">
             {user.role === 'MENTOR' ? 'Mentor' : 'Mentee'}
@@ -34,17 +92,15 @@ function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="card bg-primary/10 border-none">
           <h3 className="text-lg font-semibold mb-1">Sessões Agendadas</h3>
-          <p className="text-3xl font-bold">0</p>
+          <p className="text-3xl font-bold">{loading ? '...' : stats.sessions}</p>
         </div>
-        
         <div className="card bg-secondary/10 border-none">
           <h3 className="text-lg font-semibold mb-1">Horas de Mentoria</h3>
-          <p className="text-3xl font-bold">0</p>
+          <p className="text-3xl font-bold">{loading ? '...' : stats.hours.toFixed(1)}</p>
         </div>
-        
         <div className="card bg-accent/10 border-none">
           <h3 className="text-lg font-semibold mb-1">Conexões</h3>
-          <p className="text-3xl font-bold">0</p>
+          <p className="text-3xl font-bold">{loading ? '...' : stats.connections}</p>
         </div>
       </div>
 
@@ -57,19 +113,40 @@ function DashboardPage() {
               Buscar Mentores
             </Link>
           </div>
-          
           {/* Upcoming Sessions */}
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-4">Próximas Sessões</h4>
-            <div className="bg-background rounded-lg p-6 text-center">
-              <div className="text-5xl mb-4">📅</div>
-              <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
-              <Link to="/mentors" className="text-primary font-medium hover:underline">
-                Encontre um mentor e agende sua primeira sessão
-              </Link>
-            </div>
+            {loading ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <span className="animate-pulse text-text-secondary">Carregando...</span>
+              </div>
+            ) : upcomingSessions.length === 0 ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <div className="text-5xl mb-4">📅</div>
+                <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
+                <Link to="/mentors" className="text-primary font-medium hover:underline">
+                  Encontre um mentor e agende sua primeira sessão
+                </Link>
+              </div>
+            ) : (
+              <ul>
+                {upcomingSessions.map(session => (
+                  <li key={session.id} className="mb-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                      <span>
+                        <b>{new Date(session.start).toLocaleDateString()}</b> -{' '}
+                        {new Date(session.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} às{' '}
+                        {new Date(session.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link to={`/sessions/${session.id}`} className="btn btn-secondary mt-2 md:mt-0">
+                        Ver Detalhes
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          
           {/* Recommended Mentors */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Mentores Recomendados</h4>
@@ -90,7 +167,7 @@ function DashboardPage() {
                   Ver perfil
                 </Link>
               </div>
-              
+
               <div className="card bg-offwhite border border-[#ECECEC]">
                 <div className="flex items-center mb-3">
                   <div className="h-12 w-12 bg-secondary rounded-full mr-3"></div>
@@ -121,19 +198,40 @@ function DashboardPage() {
               Gerenciar Disponibilidade
             </Link>
           </div>
-          
           {/* Upcoming Sessions */}
           <div className="mb-6">
             <h4 className="text-lg font-semibold mb-4">Próximas Sessões</h4>
-            <div className="bg-background rounded-lg p-6 text-center">
-              <div className="text-5xl mb-4">📅</div>
-              <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
-              <Link to="/availability" className="text-primary font-medium hover:underline">
-                Configure sua disponibilidade para receber agendamentos
-              </Link>
-            </div>
+            {loading ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <span className="animate-pulse text-text-secondary">Carregando...</span>
+              </div>
+            ) : upcomingSessions.length === 0 ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <div className="text-5xl mb-4">📅</div>
+                <p className="text-text-secondary mb-4">Você não tem sessões agendadas.</p>
+                <Link to="/availability" className="text-primary font-medium hover:underline">
+                  Configure sua disponibilidade para receber agendamentos
+                </Link>
+              </div>
+            ) : (
+              <ul>
+                {upcomingSessions.map(session => (
+                  <li key={session.id} className="mb-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                      <span>
+                        <b>{new Date(session.start).toLocaleDateString()}</b> -{' '}
+                        {new Date(session.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} às{' '}
+                        {new Date(session.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Link to={`/sessions/${session.id}`} className="btn btn-secondary mt-2 md:mt-0">
+                        Ver Detalhes
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          
           {/* Profile Completion */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Perfil de Mentor</h4>

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import sessionService from '../services/sessionService';
+import { useAuth } from '../contexts/AuthContext';
+import userService from '../services/userService';
 
 function SessionDetailPage() {
   const { id } = useParams();
+  const { apiClient, user } = useAuth();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -14,8 +17,23 @@ function SessionDetailPage() {
     const fetchSessionDetails = async () => {
       try {
         setLoading(true);
-        const data = await sessionService.getSessionById(id);
-        setSession(data);
+        // Busca detalhes da sessão usando apiClient se disponível
+        const data = apiClient
+          ? await sessionService.getSessionById(apiClient, id)
+          : await sessionService.getSessionById(id);
+
+        // Busca dados do outro usuário (mentor ou mentee)
+        let otherUser = null;
+        if (user && data) {
+          const otherUserId = user.id === data.mentorId ? data.menteeId : data.mentorId;
+          if (otherUserId) {
+            otherUser = apiClient
+              ? await userService.getUserById(apiClient, otherUserId)
+              : await userService.getUserById(otherUserId);
+          }
+        }
+
+        setSession({ ...data, otherUser });
       } catch (err) {
         console.error("Failed to fetch session details:", err);
         setError('Não foi possível carregar os detalhes da sessão. Tente novamente mais tarde.');
@@ -27,19 +45,20 @@ function SessionDetailPage() {
     if (id) {
       fetchSessionDetails();
     }
-  }, [id]);
+  }, [id, apiClient, user]);
 
   const handleCancelSession = async () => {
     if (!cancelConfirm) {
       setCancelConfirm(true);
       return;
     }
-    
     setCancelLoading(true);
-    
     try {
-      await sessionService.cancelSession(id);
-      // Atualizar o status da sessão localmente
+      if (apiClient) {
+        await sessionService.deleteSession(apiClient, id);
+      } else {
+        await sessionService.deleteSession(id);
+      }
       setSession(prev => ({
         ...prev,
         status: 'CANCELLED'
@@ -53,34 +72,26 @@ function SessionDetailPage() {
     }
   };
 
-  // Formatar data para exibição
-  const formatDate = (dateStr, timeStr) => {
-    if (!dateStr || !timeStr) return { day: 'Data não disponível', time: 'Horário não disponível' };
-    
-    const date = new Date(dateStr + 'T' + timeStr);
-    
-    const day = date.toLocaleDateString('pt-BR', {
+  // Formatar data e hora para exibição
+  const formatDateTime = (start, end) => {
+    if (!start || !end) return { day: 'Data não disponível', time: 'Horário não disponível' };
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const day = startDate.toLocaleDateString('pt-BR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
-    
-    const time = date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    
+    const time = `${startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
     return { day, time };
   };
 
   // Verificar se a sessão é futura ou passada
   const isUpcoming = () => {
-    if (!session?.date || !session?.time) return false;
-    
-    const sessionDate = new Date(session.date + 'T' + session.time);
+    if (!session?.start) return false;
+    const sessionDate = new Date(session.start);
     const now = new Date();
-    
     return sessionDate > now;
   };
 
@@ -120,7 +131,7 @@ function SessionDetailPage() {
     );
   }
 
-  const { day, time } = formatDate(session.date, session.time);
+  const { day, time } = formatDateTime(session.start, session.end);
   const upcoming = isUpcoming();
 
   return (
@@ -137,7 +148,6 @@ function SessionDetailPage() {
           <h2 className="text-2xl font-bold font-display mb-2 md:mb-0">
             {upcoming ? 'Detalhes da Sessão' : 'Resumo da Sessão'}
           </h2>
-          
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
             session.status === 'CANCELLED'
               ? 'bg-red-100 text-red-700'
@@ -156,23 +166,23 @@ function SessionDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <h3 className="text-lg font-semibold mb-4">Informações da Sessão</h3>
-            
             <div className="space-y-4">
               <div>
                 <p className="text-text-muted text-sm">Data</p>
                 <p className="text-text-primary font-medium">{day}</p>
               </div>
-              
               <div>
                 <p className="text-text-muted text-sm">Horário</p>
                 <p className="text-text-primary font-medium">{time}</p>
               </div>
-              
               <div>
                 <p className="text-text-muted text-sm">Duração</p>
-                <p className="text-text-primary font-medium">60 minutos</p>
+                <p className="text-text-primary font-medium">
+                  {session.start && session.end
+                    ? `${Math.round((new Date(session.end) - new Date(session.start)) / 60000)} minutos`
+                    : '60 minutos'}
+                </p>
               </div>
-              
               {session.meetingLink && (
                 <div>
                   <p className="text-text-muted text-sm">Link da Reunião</p>
@@ -188,20 +198,17 @@ function SessionDetailPage() {
               )}
             </div>
           </div>
-          
           <div>
             <h3 className="text-lg font-semibold mb-4">
-              {session.mentorId ? 'Mentor' : 'Mentee'}
+              {user && user.id === session.mentorId ? 'Mentee' : 'Mentor'}
             </h3>
-            
             <div className="flex items-start mb-4">
               <div className="h-12 w-12 bg-primary rounded-full mr-4 flex items-center justify-center text-sm text-offwhite font-bold">
                 {session.otherUser?.username?.charAt(0).toUpperCase() || '?'}
               </div>
               <div>
                 <h4 className="font-bold">{session.otherUser?.username || 'Usuário'}</h4>
-                <p className="text-text-muted text-sm">{session.otherUser?.title || (session.mentorId ? 'Mentor' : 'Mentee')}</p>
-                
+                <p className="text-text-muted text-sm">{session.otherUser?.title || (user && user.id === session.mentorId ? 'Mentee' : 'Mentor')}</p>
                 {session.otherUser?.skills && session.otherUser.skills.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {session.otherUser.skills.slice(0, 3).map((skill, index) => (
@@ -213,7 +220,6 @@ function SessionDetailPage() {
                 )}
               </div>
             </div>
-            
             <Link 
               to={`/mentors/${session.mentorId}`} 
               className="text-primary hover:underline font-medium"
@@ -235,7 +241,6 @@ function SessionDetailPage() {
         {upcoming && session.status !== 'CANCELLED' && (
           <div className="border-t border-[#ECECEC] pt-6 mt-6">
             <h3 className="text-lg font-semibold mb-4">Ações</h3>
-            
             {cancelConfirm ? (
               <div className="bg-red-50 p-4 rounded-lg mb-4">
                 <p className="text-red-700 font-medium mb-4">
@@ -266,7 +271,6 @@ function SessionDetailPage() {
                 >
                   Cancelar Sessão
                 </button>
-                
                 {session.meetingLink && (
                   <a 
                     href={session.meetingLink} 
@@ -286,7 +290,6 @@ function SessionDetailPage() {
       {!upcoming && session.status !== 'CANCELLED' && (
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">Avaliação</h3>
-          
           <div className="bg-background rounded-lg p-6 text-center">
             <div className="text-5xl mb-4">⭐</div>
             <p className="text-text-secondary mb-4">

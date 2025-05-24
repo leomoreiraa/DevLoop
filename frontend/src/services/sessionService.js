@@ -3,26 +3,24 @@
 const API_URL = "http://localhost:8080/sessions"; // Base URL for session endpoints
 
 const createSession = async (apiClient, sessionData) => {
-  // sessionData should be { mentor: { id: Long }, scheduledTime: ISO_STRING, topic: String }
   try {
     const response = await apiClient.post(API_URL, sessionData);
     return response.data;
   } catch (error) {
     console.error("Create session API error:", error.response?.data || error.message);
-    // Provide more specific error messages if possible
     if (error.response?.status === 400) {
-        throw new Error("Não há disponibilidade para este horário ou mentor inválido.");
+      throw new Error("Não há disponibilidade para este horário ou mentor inválido.");
     }
     throw new Error(error.response?.data || "Failed to create session");
   }
 };
 
-const getAllSessions = async (apiClient) => {
+const getSessions = async (apiClient) => {
   try {
     const response = await apiClient.get(API_URL);
     return response.data;
   } catch (error) {
-    console.error("Get all sessions API error:", error.response?.data || error.message);
+    console.error("Get sessions API error:", error.response?.data || error.message);
     throw new Error(error.response?.data || "Failed to fetch sessions");
   }
 };
@@ -58,7 +56,7 @@ const deleteSession = async (apiClient, id) => {
 
 const sessionService = {
   createSession,
-  getAllSessions,
+  getSessions, // Corrigido para bater com o uso nos componentes
   getSessionById,
   updateSession,
   deleteSession,

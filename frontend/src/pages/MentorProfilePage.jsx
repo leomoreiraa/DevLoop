@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
+import { useAuth } from '../contexts/AuthContext';
 
 function MentorProfilePage() {
   const { id } = useParams();
+  const { user, apiClient } = useAuth();
   const [mentor, setMentor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,9 +20,12 @@ function MentorProfilePage() {
     const fetchMentorProfile = async () => {
       try {
         setLoading(true);
-        const data = await userService.getMentorById(id);
+        // Corrija para usar getUserById, pois getMentorById pode não existir
+        const data = apiClient
+          ? await userService.getUserById(apiClient, id)
+          : await userService.getUserById(id);
         setMentor(data);
-        
+
         // Simular datas disponíveis (em produção, viria da API)
         const dates = generateDummyDates();
         setAvailableDates(dates);
@@ -35,23 +40,24 @@ function MentorProfilePage() {
     if (id) {
       fetchMentorProfile();
     }
-  }, [id]);
+    // eslint-disable-next-line
+  }, [id, apiClient]);
 
   // Função para gerar datas fictícias para demonstração
   const generateDummyDates = () => {
     const dates = [];
     const today = new Date();
-    
+
     for (let i = 1; i <= 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      
+
       // Excluir finais de semana
       if (date.getDay() !== 0 && date.getDay() !== 6) {
         dates.push(formatDate(date));
       }
     }
-    
+
     return dates;
   };
 
@@ -65,7 +71,7 @@ function MentorProfilePage() {
     const date = e.target.value;
     setSelectedDate(date);
     setSelectedTime('');
-    
+
     // Simular horários disponíveis (em produção, viria da API)
     const times = generateDummyTimes();
     setAvailableTimes(times);
@@ -76,18 +82,16 @@ function MentorProfilePage() {
     const times = [];
     const startHour = 9;
     const endHour = 17;
-    
+
     for (let hour = startHour; hour <= endHour; hour++) {
-      // Adicionar apenas alguns horários para simular disponibilidade limitada
       if (Math.random() > 0.5) {
         times.push(`${hour.toString().padStart(2, '0')}:00`);
       }
-      
       if (hour < endHour && Math.random() > 0.7) {
         times.push(`${hour.toString().padStart(2, '0')}:30`);
       }
     }
-    
+
     return times.sort();
   };
 
@@ -100,12 +104,20 @@ function MentorProfilePage() {
       });
       return;
     }
-    
+
     setBookingStatus({ loading: true, success: false, error: '' });
-    
+
     try {
-      // Em produção, isso chamaria a API real
-      await sessionService.bookSession(id, selectedDate, selectedTime);
+      // Corrija para usar createSession do sessionService
+      if (!user || !apiClient) throw new Error('Usuário não autenticado.');
+      const sessionData = {
+        mentorId: id,
+        menteeId: user.id,
+        start: `${selectedDate}T${selectedTime}:00`,
+        end: `${selectedDate}T${selectedTime === '17:30' ? '18:00' : addHalfHour(selectedTime)}:00`
+      };
+      await sessionService.createSession(apiClient, sessionData);
+
       setBookingStatus({
         loading: false,
         success: true,
@@ -120,6 +132,13 @@ function MentorProfilePage() {
       });
     }
   };
+
+  // Função auxiliar para somar 30 minutos ao horário
+  function addHalfHour(time) {
+    const [h, m] = time.split(':').map(Number);
+    let date = new Date(2000, 0, 1, h, m + 30);
+    return date.toTimeString().slice(0, 5);
+  }
 
   if (loading) {
     return (
@@ -172,14 +191,14 @@ function MentorProfilePage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3">Sobre</h3>
               <p className="text-text-secondary whitespace-pre-line">
                 {mentor?.bio || 'Este mentor ainda não adicionou uma biografia.'}
               </p>
             </div>
-            
+
             <div>
               <h3 className="text-lg font-semibold mb-3">Experiência</h3>
               <p className="text-text-secondary whitespace-pre-line">
@@ -187,7 +206,7 @@ function MentorProfilePage() {
               </p>
             </div>
           </div>
-          
+
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Avaliações</h3>
             <div className="bg-background rounded-lg p-6 text-center">
@@ -199,12 +218,12 @@ function MentorProfilePage() {
             </div>
           </div>
         </div>
-        
+
         {/* Coluna da direita - Agendamento */}
         <div className="md:col-span-1">
           <div className="card border-l-4 border-primary sticky top-8">
             <h3 className="text-lg font-semibold mb-4">Agendar Sessão</h3>
-            
+
             {bookingStatus.success ? (
               <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-6 text-center">
                 <div className="text-3xl mb-2">✅</div>
@@ -223,7 +242,7 @@ function MentorProfilePage() {
                     {bookingStatus.error}
                   </div>
                 )}
-                
+
                 <div className="mb-4">
                   <label htmlFor="date" className="form-label">Selecione uma data</label>
                   <select
@@ -241,7 +260,7 @@ function MentorProfilePage() {
                     ))}
                   </select>
                 </div>
-                
+
                 {selectedDate && (
                   <div className="mb-6">
                     <label htmlFor="time" className="form-label">Selecione um horário</label>
@@ -270,7 +289,7 @@ function MentorProfilePage() {
                     </div>
                   </div>
                 )}
-                
+
                 <button
                   onClick={handleBookSession}
                   disabled={!selectedDate || !selectedTime || bookingStatus.loading}
@@ -278,7 +297,7 @@ function MentorProfilePage() {
                 >
                   {bookingStatus.loading ? 'Agendando...' : 'Agendar Sessão'}
                 </button>
-                
+
                 <p className="text-text-muted text-sm mt-4 text-center">
                   Ao agendar, você concorda com os termos de uso da plataforma.
                 </p>

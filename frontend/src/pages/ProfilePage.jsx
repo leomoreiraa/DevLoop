@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import userService from '../services/userService';
 
 function ProfilePage() {
-  const { user } = useAuth();
+  const { user, apiClient } = useAuth(); // <-- Adicione apiClient se necessário
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,7 +22,10 @@ function ProfilePage() {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        const profileData = await userService.getProfile();
+        // Passe apiClient se o serviço exigir
+        const profileData = apiClient
+          ? await userService.getProfile(apiClient)
+          : await userService.getProfile();
         setProfile(profileData);
         setFormData({
           username: profileData.username || '',
@@ -43,7 +46,7 @@ function ProfilePage() {
     if (user) {
       fetchProfile();
     }
-  }, [user]);
+  }, [user, apiClient]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,15 +59,23 @@ function ProfilePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveLoading(true);
-    
+
     try {
       // Convert skills string to array
       const updatedProfile = {
         ...formData,
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
-      
-      await userService.updateProfile(updatedProfile);
+
+      // Passe apiClient e userId se o serviço exigir
+      if (apiClient && user?.id) {
+        await userService.updateUser(apiClient, user.id, updatedProfile);
+      } else if (user?.id) {
+        await userService.updateUser(user.id, updatedProfile);
+      } else {
+        throw new Error("Usuário não encontrado.");
+      }
+
       setProfile({
         ...profile,
         ...updatedProfile,
@@ -91,7 +102,6 @@ function ProfilePage() {
     <div className="max-w-4xl mx-auto py-8 px-4 animate-fadeIn">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h2 className="text-3xl font-bold font-display">Meu Perfil</h2>
-        
         {!isEditing && (
           <button 
             onClick={() => setIsEditing(true)}
@@ -124,7 +134,6 @@ function ProfilePage() {
                   disabled={saveLoading}
                 />
               </div>
-              
               <div>
                 <label htmlFor="email" className="form-label">Email</label>
                 <input
@@ -134,10 +143,9 @@ function ProfilePage() {
                   value={formData.email}
                   onChange={handleChange}
                   className="input-field"
-                  disabled={true} // Email não pode ser alterado
+                  disabled={true}
                 />
               </div>
-              
               <div>
                 <label htmlFor="title" className="form-label">Título Profissional</label>
                 <input
@@ -151,7 +159,6 @@ function ProfilePage() {
                   disabled={saveLoading}
                 />
               </div>
-              
               <div>
                 <label htmlFor="skills" className="form-label">Habilidades (separadas por vírgula)</label>
                 <input
@@ -166,7 +173,6 @@ function ProfilePage() {
                 />
               </div>
             </div>
-            
             <div className="mb-6">
               <label htmlFor="bio" className="form-label">Biografia</label>
               <textarea
@@ -180,7 +186,6 @@ function ProfilePage() {
                 disabled={saveLoading}
               ></textarea>
             </div>
-            
             <div className="mb-6">
               <label htmlFor="experience" className="form-label">Experiência</label>
               <textarea
@@ -194,7 +199,6 @@ function ProfilePage() {
                 disabled={saveLoading}
               ></textarea>
             </div>
-            
             <div className="flex justify-end gap-4">
               <button
                 type="button"
@@ -231,7 +235,6 @@ function ProfilePage() {
                 <p className="text-text-muted text-sm">{profile?.email || 'email@exemplo.com'}</p>
               </div>
             </div>
-            
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Habilidades</h3>
               {profile?.skills && profile.skills.length > 0 ? (
@@ -247,7 +250,6 @@ function ProfilePage() {
               )}
             </div>
           </div>
-          
           {/* Coluna da direita - Bio e experiência */}
           <div className="md:col-span-2">
             <div className="card mb-6">
@@ -258,7 +260,6 @@ function ProfilePage() {
                 <p className="text-text-muted">Nenhuma biografia adicionada</p>
               )}
             </div>
-            
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Experiência</h3>
               {profile?.experience ? (

@@ -39,7 +39,17 @@ function RegisterPage() {
       // Redirecione ou faça login automático se desejar
       navigate('/login');
     } catch (err) {
-      setError(err.message || 'Erro ao registrar');
+      // Extract a simple error message string
+      let errorMessage = 'Erro ao registrar'; // Default message
+      if (err.response && err.response.data) {
+        // Prefer backend error message if available
+        errorMessage = typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data);
+      } else if (err.message) {
+        // Fallback to generic error message
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      console.error('Registration error details:', err); // Log the full error for debugging
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import userService from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
 
 function MentorsPage() {
+  const { apiClient } = useAuth();
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,7 +21,19 @@ function MentorsPage() {
     const fetchMentors = async () => {
       try {
         setLoading(true);
-        const data = await userService.getMentors();
+        // Corrija para usar getUsers com filtro de role se não houver getMentors
+        let data;
+        if (userService.getMentors) {
+          data = apiClient
+            ? await userService.getMentors(apiClient)
+            : await userService.getMentors();
+        } else {
+          // Busca todos usuários e filtra por role === 'MENTOR'
+          data = apiClient
+            ? await userService.getUsers(apiClient)
+            : await userService.getUsers();
+          data = data.filter(u => u.role === 'MENTOR');
+        }
         setMentors(data);
       } catch (err) {
         console.error("Failed to fetch mentors:", err);
@@ -30,7 +44,7 @@ function MentorsPage() {
     };
 
     fetchMentors();
-  }, []);
+  }, [apiClient]);
 
   const handleSearchChange = (e) => {
     setFilters(prev => ({
