@@ -1,65 +1,61 @@
-# DevLoop - Plataforma de Mentoria
+# DevLoop - Plataforma de Mentoria para Desenvolvedores
 
-DevLoop é uma plataforma de mentoria que conecta mentores e mentorados, permitindo agendamento de sessões, chamadas de vídeo em tempo real, upload de vídeos e chat integrado.
+DevLoop é uma plataforma web completa que conecta mentores e mentorados da área de tecnologia, facilitando o agendamento de sessões, comunicação em tempo real e acompanhamento do desenvolvimento profissional.
 
-## Funcionalidades Implementadas
+## Demonstração
 
-- Autenticação e registro de usuários (mentor/mentee)
-- Gerenciamento de disponibilidade para mentores
-- Agendamento de sessões de mentoria
-- Chamadas de vídeo em tempo real
-- Upload de vídeos relacionados às sessões
-- Chat integrado para comunicação durante as sessões
-- Interface responsiva e intuitiva
+Acesse a versão online: [https://leomoreiraa.github.io/DevLoop/](https://leomoreiraa.github.io/DevLoop/)
 
-## Correções e Melhorias Realizadas
+Backend hospedado em: [https://devloop-backend.fly.dev/](https://devloop-backend.fly.dev/)
 
-- Corrigido o fluxo de disponibilidade para garantir compatibilidade entre frontend e backend
-- Ajustado o formato de dados para agendamento de sessões
-- Implementada interface completa de vídeo e chat para sessões agendadas
-- Preparado o frontend para execução em Docker
+---
+
+## Funcionalidades Principais
+
+- **Cadastro e autenticação de usuários** (mentor ou mentee)
+- **Gerenciamento de disponibilidade** para mentores
+- **Agendamento de sessões de mentoria**
+- **Chamadas de vídeo em tempo real** (WebRTC)
+- **Upload e compartilhamento de vídeos** relacionados às sessões
+- **Chat integrado** para comunicação entre mentor e mentee
+- **Avaliação de sessões e feedback**
+- **Interface responsiva e intuitiva** para desktop e mobile
+
+---
 
 ## Estrutura do Projeto
 
-- `/frontend` - Aplicação React com Vite
-- `/backend` - API Java Spring Boot
+- `/frontend` — Aplicação React (Vite)
+- `/backend` — API Java Spring Boot
 
-## Requisitos
+---
 
-### Frontend
-- Node.js 20+
-- npm ou yarn
+## Tecnologias Utilizadas
+
+- **Frontend:** React, Vite, TailwindCSS, React Router, Axios, WebRTC
+- **Backend:** Java 11+, Spring Boot, Spring Security, JWT, Maven
+- **Banco de Dados:** (configurável no backend)
+- **Deploy:** GitHub Pages (frontend), Fly.io (backend)
+- **Docker:** Suporte para ambos os ambientes
+
+---
+
+## Como Executar Localmente
+
+### Pré-requisitos
+
+- Node.js 20+ e npm (ou yarn)
+- Java 11+ e Maven
+- Docker (opcional, para execução em containers)
 
 ### Backend
-- Java 11+
-- Maven
-
-## Instruções de Execução
-
-### Frontend (Desenvolvimento)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Frontend (Produção com Docker)
-
-```bash
-cd frontend
-docker build -t devloop-frontend .
-docker run -p 80:80 devloop-frontend
-```
-
-### Backend (Desenvolvimento)
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-### Backend (Produção com Docker)
+ou com Docker:
 
 ```bash
 cd backend
@@ -67,39 +63,60 @@ docker build -t devloop-backend .
 docker run -p 8080:8080 devloop-backend
 ```
 
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+ou com Docker:
+
+```bash
+cd frontend
+docker build -t devloop-frontend .
+docker run -p 80:80 devloop-frontend
+```
+
+---
+
 ## Configuração de Ambiente
 
-Por padrão, o frontend se conecta ao backend em `http://localhost:8080`. Para alterar esta configuração:
+O frontend utiliza variáveis de ambiente para definir a URL da API:
 
-1. Crie um arquivo `.env.local` na pasta `frontend`
-2. Adicione a variável `VITE_API_URL` com o endereço do backend
+- **Desenvolvimento:**  
+  Crie um arquivo `.env` em `/frontend`:
+  ```
+  VITE_API_URL=http://localhost:8080
+  ```
 
-Exemplo:
-```
-VITE_API_URL=http://api.seudominio.com
-```
+- **Produção:**  
+  Crie um arquivo `.env.production` em `/frontend`:
+  ```
+  VITE_API_URL=https://devloop-backend.fly.dev
+  ```
 
-## Notas para Desenvolvedores
+---
 
-### Fluxo de Disponibilidade
+## Principais Telas
 
-O frontend agora converte corretamente os slots de horário selecionados para objetos de data ISO compatíveis com o backend. Isso garante que o agendamento funcione corretamente.
+- **Dashboard:** Visão geral das sessões e notificações
+- **Agenda:** Visualização e agendamento de sessões
+- **Perfil:** Gerenciamento de dados do usuário e avaliações
+- **Chat:** Comunicação em tempo real durante as sessões
+- **Disponibilidade:** Configuração de horários para mentores
 
-### Chamadas de Vídeo
-
-A implementação atual usa WebRTC simulado para demonstração. Em produção, recomenda-se integrar com um serviço como Twilio, Agora.io ou Amazon Chime.
-
-### Upload de Vídeo
-
-O componente de upload está preparado para integração com backend. Em produção, recomenda-se configurar limites de tamanho e formatos adequados.
-
-## Próximos Passos
-
-- Implementar testes automatizados
-- Adicionar funcionalidade de gravação de sessões
-- Melhorar a interface de avaliação pós-sessão
-- Implementar dashboard analítico para mentores
+---
 
 ## Licença
 
 Este projeto está licenciado sob a licença MIT.
+
+---
+
+## Sobre
+
+DevLoop foi desenvolvido para facilitar o crescimento profissional de desenvolvedores, promovendo conexões de qualidade entre mentores e mentorados, com recursos modernos de comunicação e acompanhamento.
+
+---
