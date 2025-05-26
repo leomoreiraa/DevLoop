@@ -22,7 +22,7 @@ public class AuthServiceImpl implements AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword_hash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(User.Role.valueOf(request.getRole())); // Use o papel enviado
+        user.setRole(User.Role.valueOf(request.getRole()));
         userRepository.save(user);
     }
 }

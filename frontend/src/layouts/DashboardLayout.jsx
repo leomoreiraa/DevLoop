@@ -69,9 +69,17 @@ function DashboardLayout({ children }) { // <-- Recebe children
         </nav>
         <div className="p-4 border-t border-[#ECECEC] mt-auto">
           <div className="flex items-center mb-4">
-            <div className="h-10 w-10 bg-primary rounded-full mr-3 flex items-center justify-center text-sm text-offwhite font-bold shrink-0">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
-            </div>
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt={user.username}
+                className="h-10 w-10 rounded-full mr-3 object-cover shrink-0"
+              />
+            ) : (
+              <div className="h-10 w-10 bg-primary rounded-full mr-3 flex items-center justify-center text-sm text-offwhite font-bold shrink-0">
+                {user?.username?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            )}
             <div className="overflow-hidden">
               <p className="font-medium text-text-primary truncate">{user?.username || 'Usuário'}</p>
               <p className="text-text-muted text-xs">{user?.role === 'MENTOR' ? 'Mentor' : 'Mentee'}</p>

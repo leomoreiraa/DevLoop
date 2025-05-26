@@ -29,12 +29,12 @@ function RegisterPage() {
     setLoading(true);
     setError('');
     try {
-      // Envie apenas os campos necessários para o backend
+      // Envie os campos necessários para o backend
       await authService.register({
-        username: formData.username,
+        name: formData.username, // Corrigido: envia como 'name'
         email: formData.email,
         password: formData.password,
-        role: formData.role // Inclua se o backend espera esse campo
+        role: formData.role
       });
       // Redirecione ou faça login automático se desejar
       navigate('/login');

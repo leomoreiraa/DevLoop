@@ -176,9 +176,17 @@ function MentorProfilePage() {
         <div className="md:col-span-2">
           <div className="card mb-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6">
-              <div className="h-20 w-20 bg-primary rounded-full mr-6 flex items-center justify-center text-2xl text-offwhite font-bold mb-4 sm:mb-0">
-                {mentor?.username?.charAt(0).toUpperCase() || 'M'}
-              </div>
+              {mentor?.profileImage ? (
+                <img
+                  src={mentor.profileImage}
+                  alt={mentor.username}
+                  className="h-20 w-20 rounded-full mr-6 object-cover mb-4 sm:mb-0"
+                />
+              ) : (
+                <div className="h-20 w-20 bg-primary rounded-full mr-6 flex items-center justify-center text-2xl text-offwhite font-bold mb-4 sm:mb-0">
+                  {mentor?.username?.charAt(0).toUpperCase() || 'M'}
+                </div>
+              )}
               <div>
                 <h2 className="text-2xl font-bold font-display">{mentor?.username || 'Mentor'}</h2>
                 <p className="text-text-secondary">{mentor?.title || 'Mentor Profissional'}</p>
