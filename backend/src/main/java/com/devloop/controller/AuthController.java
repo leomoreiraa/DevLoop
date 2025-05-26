@@ -13,6 +13,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -37,11 +39,11 @@ public class AuthController {
         User user = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
 
         if (user == null) {
-            return ResponseEntity.status(401).body("Usuário não encontrado");
+            return ResponseEntity.status(401).body(Map.of("error", "Usuário não encontrado"));
         }
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword_hash())) {
-            return ResponseEntity.status(401).body("Senha inválida");
+            return ResponseEntity.status(401).body(Map.of("error", "Senha inválida"));
         }
 
         UserDetails userDetails = org.springframework.security.core.userdetails.User
@@ -51,12 +53,17 @@ public class AuthController {
             .build();
 
         String jwt = jwtUtil.generateToken(userDetails);
-        return ResponseEntity.ok(jwt);
+        // Return JWT as a JSON object for consistency
+        return ResponseEntity.ok(Map.of("token", jwt)); 
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest registerRequest) {
-        authService.registerUser(registerRequest);
-        return ResponseEntity.ok("User registered successfully");
+    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+        try {
+            authService.registerUser(registerRequest);
+            return ResponseEntity.ok(Map.of("message", "User registered successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import sessionService from '../services/sessionService';
+import userService from '../services/userService';
 
 function DashboardPage() {
   const { user, apiClient } = useAuth();
@@ -12,6 +13,7 @@ function DashboardPage() {
     connections: 0,
   });
   const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [recommendedMentors, setRecommendedMentors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +55,20 @@ function DashboardPage() {
           connections,
         });
         setUpcomingSessions(upcoming.slice(0, 3));
+        
+        // Buscar mentores recomendados se o usuário for mentee
+        if (user.role === 'MENTEE') {
+          try {
+            const allUsers = await userService.getUsers(apiClient);
+            const mentors = allUsers.filter(u => u.role === 'MENTOR');
+            // Pegar 2 mentores aleatórios como recomendação
+            const shuffled = [...mentors].sort(() => 0.5 - Math.random());
+            setRecommendedMentors(shuffled.slice(0, 2));
+          } catch (err) {
+            console.error("Falha ao buscar mentores recomendados:", err);
+            setRecommendedMentors([]);
+          }
+        }
       } catch (err) {
         setStats({ sessions: 0, hours: 0, connections: 0 });
         setUpcomingSessions([]);
@@ -150,41 +166,53 @@ function DashboardPage() {
           {/* Recommended Mentors */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Mentores Recomendados</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="card bg-offwhite border border-[#ECECEC]">
-                <div className="flex items-center mb-3">
-                  <div className="h-12 w-12 bg-primary rounded-full mr-3"></div>
-                  <div>
-                    <h5 className="font-semibold">Mentor Exemplo</h5>
-                    <p className="text-text-muted text-sm">Desenvolvedor Fullstack</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">React</span>
-                  <span className="px-2 py-1 bg-secondary/10 text-secondary text-xs rounded-full">Node.js</span>
-                </div>
-                <Link to="/mentors" className="text-primary text-sm font-medium hover:underline">
-                  Ver perfil
+            {loading ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <span className="animate-pulse text-text-secondary">Carregando mentores recomendados...</span>
+              </div>
+            ) : recommendedMentors.length === 0 ? (
+              <div className="bg-background rounded-lg p-6 text-center">
+                <div className="text-5xl mb-4">🔍</div>
+                <p className="text-text-secondary mb-4">Nenhum mentor disponível no momento.</p>
+                <Link to="/mentors" className="text-primary font-medium hover:underline">
+                  Explorar todos os mentores
                 </Link>
               </div>
-
-              <div className="card bg-offwhite border border-[#ECECEC]">
-                <div className="flex items-center mb-3">
-                  <div className="h-12 w-12 bg-secondary rounded-full mr-3"></div>
-                  <div>
-                    <h5 className="font-semibold">Mentor Exemplo</h5>
-                    <p className="text-text-muted text-sm">UX Designer</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recommendedMentors.map(mentor => (
+                  <div key={mentor.id} className="card bg-offwhite border border-[#ECECEC]">
+                    <div className="flex items-center mb-3">
+                      {mentor.profileImage ? (
+                        <img 
+                          src={mentor.profileImage} 
+                          alt={mentor.username} 
+                          className="h-12 w-12 rounded-full mr-3 object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 bg-primary rounded-full mr-3 flex items-center justify-center text-sm text-offwhite font-bold">
+                          {mentor.username ? mentor.username.charAt(0).toUpperCase() : 'M'}
+                        </div>
+                      )}
+                      <div>
+                        <h5 className="font-semibold">{mentor.username || 'Mentor'}</h5>
+                        <p className="text-text-muted text-sm">{mentor.title || 'Mentor Profissional'}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {mentor.skills && mentor.skills.slice(0, 2).map((skill, index) => (
+                        <span key={index} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                    <Link to={`/mentors/${mentor.id}`} className="text-primary text-sm font-medium hover:underline">
+                      Ver perfil
+                    </Link>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Figma</span>
-                  <span className="px-2 py-1 bg-accent/10 text-accent text-xs rounded-full">UI/UX</span>
-                </div>
-                <Link to="/mentors" className="text-primary text-sm font-medium hover:underline">
-                  Ver perfil
-                </Link>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -238,10 +266,17 @@ function DashboardPage() {
             <div className="bg-background rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h5 className="font-semibold">Completude do Perfil</h5>
-                <span className="text-primary font-medium">30%</span>
+                <span className="text-primary font-medium">
+                  {user.bio && user.title && user.skills && user.skills.length > 0 && user.experience ? '100%' : '30%'}
+                </span>
               </div>
               <div className="w-full bg-[#ECECEC] rounded-full h-2.5 mb-4">
-                <div className="bg-primary h-2.5 rounded-full" style={{ width: '30%' }}></div>
+                <div 
+                  className="bg-primary h-2.5 rounded-full" 
+                  style={{ 
+                    width: user.bio && user.title && user.skills && user.skills.length > 0 && user.experience ? '100%' : '30%' 
+                  }}
+                ></div>
               </div>
               <ul className="space-y-2 text-text-secondary">
                 <li className="flex items-center">
@@ -249,15 +284,21 @@ function DashboardPage() {
                   Informações básicas
                 </li>
                 <li className="flex items-center">
-                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  <span className={`inline-block w-5 h-5 mr-2 rounded-full ${user.skills && user.skills.length > 0 ? 'bg-primary/20 text-primary' : 'bg-[#ECECEC] text-text-muted'} text-center`}>
+                    {user.skills && user.skills.length > 0 ? '✓' : '!'}
+                  </span>
                   Adicionar habilidades e especialidades
                 </li>
                 <li className="flex items-center">
-                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  <span className={`inline-block w-5 h-5 mr-2 rounded-full ${user.title ? 'bg-primary/20 text-primary' : 'bg-[#ECECEC] text-text-muted'} text-center`}>
+                    {user.title ? '✓' : '!'}
+                  </span>
                   Configurar disponibilidade
                 </li>
                 <li className="flex items-center">
-                  <span className="inline-block w-5 h-5 mr-2 rounded-full bg-[#ECECEC] text-text-muted text-center">!</span>
+                  <span className={`inline-block w-5 h-5 mr-2 rounded-full ${user.bio && user.experience ? 'bg-primary/20 text-primary' : 'bg-[#ECECEC] text-text-muted'} text-center`}>
+                    {user.bio && user.experience ? '✓' : '!'}
+                  </span>
                   Adicionar biografia e experiência
                 </li>
               </ul>

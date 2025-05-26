@@ -13,4 +13,8 @@ public interface UserService {
     User updateProfile(Long id, UserProfileDto profileDto);
     boolean updatePassword(Long id, PasswordUpdateDto passwordDto);
     void delete(Long id);
+    
+    // Adicionar a assinatura do método que faltava
+    User updateProfileImage(Long id, String imageData);
 }
+

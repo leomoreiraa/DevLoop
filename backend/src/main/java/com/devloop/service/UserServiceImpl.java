@@ -27,7 +27,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findById(Long id) {
-        return userRepository.findById(id).orElseThrow();
+        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 
     @Override
@@ -97,4 +97,13 @@ public class UserServiceImpl implements UserService {
     public void delete(Long id) {
         userRepository.deleteById(id);
     }
+    
+    // Implementação do método que faltava
+    @Override
+    public User updateProfileImage(Long id, String imageData) {
+        User user = findById(id);
+        user.setProfileImage(imageData);
+        return userRepository.save(user);
+    }
 }
+

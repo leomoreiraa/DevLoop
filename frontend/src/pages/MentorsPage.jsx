@@ -21,23 +21,30 @@ function MentorsPage() {
     const fetchMentors = async () => {
       try {
         setLoading(true);
-        // Corrija para usar getUsers com filtro de role se não houver getMentors
-        let data;
-        if (userService.getMentors) {
-          data = apiClient
-            ? await userService.getMentors(apiClient)
-            : await userService.getMentors();
-        } else {
-          // Busca todos usuários e filtra por role === 'MENTOR'
-          data = apiClient
-            ? await userService.getUsers(apiClient)
-            : await userService.getUsers();
-          data = data.filter(u => u.role === 'MENTOR');
+        setError('');
+        
+        // Garantir que apiClient está disponível
+        if (!apiClient) {
+          console.error("API client não disponível");
+          setError('Erro de autenticação. Por favor, faça login novamente.');
+          setLoading(false);
+          return;
         }
-        setMentors(data);
+        
+        // Buscar todos os usuários
+        const allUsers = await userService.getUsers(apiClient);
+        
+        // Filtrar apenas mentores
+        const mentorUsers = allUsers.filter(user => 
+          user.role === 'MENTOR' || user.role === 'MENTOR'
+        );
+        
+        console.log("Mentores encontrados:", mentorUsers.length);
+        setMentors(mentorUsers);
       } catch (err) {
-        console.error("Failed to fetch mentors:", err);
+        console.error("Falha ao buscar mentores:", err);
         setError('Não foi possível carregar a lista de mentores. Tente novamente mais tarde.');
+        setMentors([]);
       } finally {
         setLoading(false);
       }
@@ -68,12 +75,12 @@ function MentorsPage() {
   const filteredMentors = mentors.filter(mentor => {
     // Filtro por texto de busca
     const searchMatch = filters.search === '' || 
-      mentor.username.toLowerCase().includes(filters.search.toLowerCase()) ||
+      (mentor.username && mentor.username.toLowerCase().includes(filters.search.toLowerCase())) ||
       (mentor.title && mentor.title.toLowerCase().includes(filters.search.toLowerCase()));
     
     // Filtro por habilidades
     const skillsMatch = filters.skills.length === 0 || 
-      filters.skills.some(skill => mentor.skills && mentor.skills.includes(skill));
+      (mentor.skills && filters.skills.some(skill => mentor.skills.includes(skill)));
     
     return searchMatch && skillsMatch;
   });
@@ -137,11 +144,19 @@ function MentorsPage() {
           {filteredMentors.map(mentor => (
             <div key={mentor.id} className="card hover:shadow-lg transition-shadow">
               <div className="flex items-start mb-4">
-                <div className="h-16 w-16 bg-primary rounded-full mr-4 flex items-center justify-center text-xl text-offwhite font-bold">
-                  {mentor.username.charAt(0).toUpperCase()}
-                </div>
+                {mentor.profileImage ? (
+                  <img 
+                    src={mentor.profileImage} 
+                    alt={mentor.username} 
+                    className="h-16 w-16 rounded-full mr-4 object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 bg-primary rounded-full mr-4 flex items-center justify-center text-xl text-offwhite font-bold">
+                    {mentor.username ? mentor.username.charAt(0).toUpperCase() : 'M'}
+                  </div>
+                )}
                 <div>
-                  <h3 className="font-bold text-lg">{mentor.username}</h3>
+                  <h3 className="font-bold text-lg">{mentor.username || 'Mentor'}</h3>
                   <p className="text-text-secondary text-sm">{mentor.title || 'Mentor'}</p>
                 </div>
               </div>

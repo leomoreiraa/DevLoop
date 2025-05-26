@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import userService from '../services/userService';
 
 const AuthContext = createContext(null);
 const API_URL = 'http://localhost:8080';
@@ -26,25 +27,40 @@ export const AuthProvider = ({ children }) => {
     return instance;
   }, []);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (token) {
-        setLoading(true);
-        try {
-          const response = await apiClient.get('/api/users/me');
-          setUser(response.data);
-        } catch (error) {
-          console.error('Failed to fetch user data:', error);
-          logout();
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setUser(null);
+  const fetchUserData = async () => {
+    if (token) {
+      setLoading(true);
+      try {
+        const response = await apiClient.get('/api/users/me');
+        setUser(response.data);
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        logout();
+      } finally {
         setLoading(false);
       }
-    };
-    fetchUser();
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
+  };
+
+  // Função para atualizar os dados do usuário após edições
+  const refreshUserData = async () => {
+    if (token) {
+      try {
+        const response = await apiClient.get('/api/users/me');
+        setUser(response.data);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to refresh user data:', error);
+        throw error;
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
     // eslint-disable-next-line
   }, [token]);
 
@@ -70,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     apiClient,
+    refreshUserData
   };
 
   return (
@@ -80,4 +97,3 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
-

@@ -33,6 +33,9 @@ public class User {
     @CollectionTable(name = "user_skills", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "skill")
     private List<String> skills;
+    
+    @Column(columnDefinition = "TEXT")
+    private String profileImage;
 
     public enum Role {
         MENTOR,
@@ -111,5 +114,13 @@ public class User {
     
     public void setSkills(List<String> skills) {
         this.skills = skills;
+    }
+    
+    public String getProfileImage() {
+        return profileImage;
+    }
+    
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
 }

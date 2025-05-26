@@ -92,7 +92,34 @@ public class UserController {
         User user = userRepository.findByEmail(email).orElseThrow();
         // Corrija para garantir que o username não seja null
         String username = user.getName() != null ? user.getName() : user.getEmail();
-        UserDto dto = new UserDto(user.getId(), username, user.getEmail(), user.getRole().name());
+        
+        // Criar DTO completo com todos os campos do perfil
+        UserDto dto = new UserDto(
+            user.getId(), 
+            username, 
+            user.getEmail(), 
+            user.getRole().name(),
+            user.getBio(),
+            user.getTitle(),
+            user.getExperience(),
+            user.getSkills(),
+            user.getProfileImage()
+        );
+        
         return ResponseEntity.ok(dto);
+    }
+    
+    /**
+     * Endpoint para upload de imagem de perfil
+     */
+    @PutMapping("/{id}/profile-image")
+    public ResponseEntity<User> updateProfileImage(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        String imageData = payload.get("imageData");
+        if (imageData == null || imageData.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        User updatedUser = userService.updateProfileImage(id, imageData);
+        return ResponseEntity.ok(updatedUser);
     }
 }

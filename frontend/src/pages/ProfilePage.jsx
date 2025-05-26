@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import userService from '../services/userService';
+import ImageUploader from '../components/ImageUploader';
+import { toast } from 'react-toastify';
 
 function ProfilePage() {
-  const { user, apiClient } = useAuth();
+  const { user, apiClient, refreshUserData } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,32 +29,33 @@ function ProfilePage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      // Passe apiClient se o serviço exigir
+      const profileData = apiClient
+        ? await userService.getProfile(apiClient)
+        : await userService.getProfile();
+      setProfile(profileData);
+      setFormData({
+        username: profileData.username || '',
+        email: profileData.email || '',
+        bio: profileData.bio || '',
+        skills: profileData.skills?.join(', ') || '',
+        title: profileData.title || '',
+        experience: profileData.experience || ''
+      });
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      setError('Não foi possível carregar o perfil. Tente novamente mais tarde.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        // Passe apiClient se o serviço exigir
-        const profileData = apiClient
-          ? await userService.getProfile(apiClient)
-          : await userService.getProfile();
-        setProfile(profileData);
-        setFormData({
-          username: profileData.username || '',
-          email: profileData.email || '',
-          bio: profileData.bio || '',
-          skills: profileData.skills?.join(', ') || '',
-          title: profileData.title || '',
-          experience: profileData.experience || ''
-        });
-      } catch (err) {
-        console.error("Failed to fetch profile:", err);
-        setError('Não foi possível carregar o perfil. Tente novamente mais tarde.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (user) {
       fetchProfile();
     }
@@ -74,6 +77,34 @@ function ProfilePage() {
     }));
   };
 
+  const handleImageUpload = async (imageData) => {
+    if (!apiClient || !user?.id) {
+      toast.error('Erro de autenticação. Por favor, faça login novamente.');
+      return;
+    }
+
+    setImageLoading(true);
+    try {
+      await userService.updateProfileImage(apiClient, user.id, imageData);
+      
+      // Atualizar o perfil local
+      setProfile(prev => ({
+        ...prev,
+        profileImage: imageData
+      }));
+      
+      // Atualizar o estado global do usuário
+      await refreshUserData();
+      
+      toast.success('Imagem de perfil atualizada com sucesso!');
+    } catch (err) {
+      console.error("Failed to update profile image:", err);
+      toast.error('Não foi possível atualizar a imagem de perfil. Tente novamente mais tarde.');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaveLoading(true);
@@ -93,6 +124,9 @@ function ProfilePage() {
       // Usa o novo endpoint seguro para atualização de perfil
       if (apiClient && user?.id) {
         await userService.updateUserProfile(apiClient, user.id, profileData);
+        
+        // Atualizar o estado global do usuário para garantir persistência
+        await refreshUserData();
       } else if (user?.id) {
         await userService.updateUserProfile(user.id, profileData);
       } else {
@@ -259,16 +293,10 @@ function ProfilePage() {
           {isEditing ? (
             <div className="card border-l-4 border-primary">
               <form onSubmit={handleSubmit}>
-                <div className="mb-6">
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="h-24 w-24 bg-primary rounded-full flex items-center justify-center text-3xl text-offwhite font-bold">
-                      {formData.username?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  </div>
-                  <p className="text-center text-text-secondary text-sm mb-6">
-                    A foto de perfil é gerada automaticamente a partir da primeira letra do seu nome de usuário.
-                  </p>
-                </div>
+                <ImageUploader 
+                  onImageUpload={handleImageUpload} 
+                  currentImage={profile?.profileImage} 
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
@@ -387,9 +415,17 @@ function ProfilePage() {
               <div className="md:col-span-1">
                 <div className="card mb-6">
                   <div className="flex flex-col items-center">
-                    <div className="h-24 w-24 bg-primary rounded-full mb-4 flex items-center justify-center text-3xl text-offwhite font-bold">
-                      {profile?.username?.charAt(0).toUpperCase() || 'U'}
-                    </div>
+                    {profile?.profileImage ? (
+                      <img 
+                        src={profile.profileImage} 
+                        alt={profile.username} 
+                        className="h-24 w-24 rounded-full mb-4 object-cover border-4 border-white shadow-md"
+                      />
+                    ) : (
+                      <div className="h-24 w-24 bg-primary rounded-full mb-4 flex items-center justify-center text-3xl text-offwhite font-bold">
+                        {profile?.username?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
                     <h3 className="text-xl font-bold mb-1">{profile?.username || 'Usuário'}</h3>
                     <p className="text-text-secondary mb-2">{profile?.title || 'Sem título'}</p>
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/20 text-primary mb-4">
@@ -403,65 +439,48 @@ function ProfilePage() {
                   {profile?.skills && profile.skills.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {profile.skills.map((skill, index) => (
-                        <span key={index} className="px-3 py-1 bg-secondary/10 text-secondary text-sm rounded-full">
+                        <span key={index} className="px-2 py-1 bg-primary/10 text-primary text-sm rounded-full">
                           {skill}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-gray-50 rounded-lg p-4 text-center">
-                      <p className="text-text-muted">Nenhuma habilidade adicionada</p>
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="text-primary text-sm hover:underline mt-2"
-                      >
-                        Adicionar habilidades
-                      </button>
-                    </div>
+                    <p className="text-text-secondary">Nenhuma habilidade adicionada.</p>
                   )}
                 </div>
               </div>
-              {/* Coluna da direita - Bio e experiência */}
+              
+              {/* Coluna da direita - Biografia e experiência */}
               <div className="md:col-span-2">
                 <div className="card mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Sobre mim</h3>
-                    {!profile?.bio && (
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="text-primary text-sm hover:underline"
-                      >
-                        Adicionar biografia
-                      </button>
-                    )}
-                  </div>
+                  <h3 className="text-lg font-semibold mb-4">Biografia</h3>
                   {profile?.bio ? (
                     <p className="text-text-secondary whitespace-pre-line">{profile.bio}</p>
                   ) : (
-                    <div className="bg-gray-50 rounded-lg p-4 text-center">
-                      <p className="text-text-muted">Nenhuma biografia adicionada</p>
-                      <p className="text-text-muted text-sm mt-2">Adicione uma biografia para que outros usuários possam conhecer você melhor.</p>
+                    <div className="bg-background rounded-lg p-6 text-center">
+                      <p className="text-text-secondary mb-4">Você ainda não adicionou uma biografia.</p>
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Adicionar biografia
+                      </button>
                     </div>
                   )}
                 </div>
                 <div className="card">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Experiência</h3>
-                    {!profile?.experience && (
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="text-primary text-sm hover:underline"
-                      >
-                        Adicionar experiência
-                      </button>
-                    )}
-                  </div>
+                  <h3 className="text-lg font-semibold mb-4">Experiência</h3>
                   {profile?.experience ? (
                     <p className="text-text-secondary whitespace-pre-line">{profile.experience}</p>
                   ) : (
-                    <div className="bg-gray-50 rounded-lg p-4 text-center">
-                      <p className="text-text-muted">Nenhuma experiência adicionada</p>
-                      <p className="text-text-muted text-sm mt-2">Compartilhe sua experiência profissional para destacar suas qualificações.</p>
+                    <div className="bg-background rounded-lg p-6 text-center">
+                      <p className="text-text-secondary mb-4">Você ainda não adicionou sua experiência.</p>
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        Adicionar experiência
+                      </button>
                     </div>
                   )}
                 </div>
@@ -473,9 +492,10 @@ function ProfilePage() {
 
       {/* Conteúdo da aba de segurança */}
       {activeTab === 'security' && (
-        <div className="card border-l-4 border-secondary">
+        <div className="card border-l-4 border-accent">
           <h3 className="text-xl font-bold mb-6">Alterar Senha</h3>
           
+          {/* Mensagens de erro/sucesso */}
           {passwordError && (
             <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 text-sm border border-red-100">
               <div className="flex items-center">
@@ -523,9 +543,8 @@ function ProfilePage() {
                 className="input-field"
                 required
                 disabled={passwordLoading}
-                minLength={6}
               />
-              <p className="text-text-muted text-xs mt-1">A senha deve ter pelo menos 6 caracteres.</p>
+              <p className="text-text-muted text-xs mt-1">Mínimo de 6 caracteres.</p>
             </div>
             <div className="mb-6">
               <label htmlFor="confirmPassword" className="form-label">Confirmar Nova Senha</label>
@@ -543,7 +562,7 @@ function ProfilePage() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="btn btn-secondary"
+                className="btn btn-accent"
                 disabled={passwordLoading}
               >
                 {passwordLoading ? (
@@ -552,36 +571,12 @@ function ProfilePage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Alterando senha...
+                    Alterando...
                   </span>
                 ) : 'Alterar Senha'}
               </button>
             </div>
           </form>
-          
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h4 className="text-lg font-semibold mb-4">Dicas de Segurança</h4>
-            <ul className="space-y-2 text-text-secondary">
-              <li className="flex items-start">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Use uma senha forte com pelo menos 8 caracteres, incluindo letras maiúsculas, minúsculas, números e símbolos.
-              </li>
-              <li className="flex items-start">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Não use a mesma senha em vários sites ou serviços.
-              </li>
-              <li className="flex items-start">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Altere sua senha regularmente, pelo menos a cada 3 meses.
-              </li>
-            </ul>
-          </div>
         </div>
       )}
     </div>

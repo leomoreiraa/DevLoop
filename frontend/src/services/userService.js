@@ -67,6 +67,20 @@ const updateUserPassword = async (apiClient, id, passwordData) => {
   }
 };
 
+/**
+ * Método para atualizar a imagem de perfil do usuário
+ * Aceita dados de imagem em base64
+ */
+const updateProfileImage = async (apiClient, id, imageData) => {
+  try {
+    const response = await apiClient.put(`/api/users/${id}/profile-image`, { imageData });
+    return response.data;
+  } catch (error) {
+    console.error(`Update profile image ${id} API error:`, error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Falha ao atualizar imagem de perfil");
+  }
+};
+
 // Endpoint para buscar o perfil do usuário autenticado
 const getProfile = async (apiClient) => {
   try {
@@ -84,8 +98,8 @@ const userService = {
   updateUser,
   updateUserProfile,
   updateUserPassword,
+  updateProfileImage,
   getProfile,
 };
 
 export default userService;
-
